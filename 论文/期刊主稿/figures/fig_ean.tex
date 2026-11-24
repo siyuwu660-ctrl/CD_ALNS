@@ -1,0 +1,76 @@
+% Event-activity network of two trains i, j on stations v1 -> v2 -> v3 (TikZ)
+\newcommand{\eanbase}[1]{%
+  % #1 = 1: full network; 2: selected network with critical path
+  \begin{tikzpicture}[x=1cm,y=1cm,font=\footnotesize,
+    ev/.style={circle,draw=black!80,fill=white,inner sep=0pt,minimum size=17pt,font=\scriptsize},
+    vv/.style={rectangle,rounded corners=2pt,draw=black!70,fill=gray!12,inner sep=2pt,minimum size=14pt,font=\scriptsize},
+    run/.style={-{Stealth[length=4pt]},line width=0.7pt,black!80},
+    dwl/.style={-{Stealth[length=4pt]},line width=0.7pt,black!80,densely dashdotted},
+    hw/.style={{Stealth[length=4pt]}-{Stealth[length=4pt]},line width=0.6pt,blue!65!black,dashed},
+    hws/.style={-{Stealth[length=4pt]},line width=0.7pt,blue!65!black},
+    stn/.style={{Stealth[length=4pt]}-{Stealth[length=4pt]},line width=0.6pt,orange!80!black,dotted},
+    stns/.style={-{Stealth[length=4pt]},line width=0.7pt,orange!80!black},
+    vir/.style={-{Stealth[length=4pt]},line width=0.5pt,gray},
+    crit/.style={line width=2.2pt,red!70!black,opacity=0.35}]
+    % station columns
+    \foreach \x/\lab in {0/$v_1$,3.6/$v_2$,7.2/$v_3$}{\node[font=\footnotesize\bfseries,gray] at (\x+0.6,3.05) {\lab};}
+    \draw[gray!40,rounded corners=3pt] (2.95,-0.55) rectangle (5.45,2.5);
+    \node[gray,font=\scriptsize,anchor=north] at (4.2,-0.55) {station $v_2$ (overtaking allowed)};
+    % events
+    \node[ev] (di1) at (0.6,2) {$d_i^{1}$};  \node[ev] (dj1) at (0.6,0) {$d_j^{1}$};
+    \node[ev] (ai2) at (3.4,2) {$a_i^{2}$};  \node[ev] (aj2) at (3.4,0) {$a_j^{2}$};
+    \node[ev] (di2) at (5.0,2) {$d_i^{2}$};  \node[ev] (dj2) at (5.0,0) {$d_j^{2}$};
+    \node[ev] (ai3) at (7.8,2) {$a_i^{3}$};  \node[ev] (aj3) at (7.8,0) {$a_j^{3}$};
+    \node[vv] (Tm) at (-1.3,1) {$T^-$}; \node[vv] (Tp) at (9.7,1) {$T^+$};
+    \node[gray,font=\scriptsize,anchor=east] at (-0.15,2) {train $i$};
+    \node[gray,font=\scriptsize,anchor=east] at (-0.15,0) {train $j$};
+    \ifnum#1=1
+      % train activities
+      \draw[run] (di1)--node[above,font=\scriptsize]{running} (ai2); \draw[dwl] (ai2)--node[above,font=\scriptsize]{dwell} (di2); \draw[run] (di2)--node[above,font=\scriptsize]{running} (ai3);
+      \draw[run] (dj1)--(aj2); \draw[dwl] (aj2)--(dj2); \draw[run] (dj2)--(aj3);
+      % disjunctive headway pairs (one order variable per section)
+      \draw[hw] (di1)--node[left,font=\scriptsize,blue!65!black]{$z_{ijc_1}$} (dj1);
+      \draw[hw] (ai2) to[bend right=18] node[left,font=\scriptsize,blue!65!black,pos=0.3]{$z_{ijc_1}$} (aj2);
+      \draw[hw] (di2) to[bend left=18] node[right,font=\scriptsize,blue!65!black,pos=0.3]{$z_{ijc_2}$} (dj2);
+      \draw[hw] (ai3)--node[right,font=\scriptsize,blue!65!black]{$z_{ijc_2}$} (aj3);
+      % conditional station activities at v2 (track occupancy / route headway)
+      \draw[stn] (di2) to[bend left=6] (aj2);
+      \draw[stn] (dj2) to[bend left=6] (ai2);
+      \node[orange!80!black,font=\scriptsize,align=center,fill=white,inner sep=1pt] at (4.2,1.0) {$w^T,w^{\sigma\sigma'}$\\[-1pt]$\mid Y$};
+      % virtual makespan events
+      \foreach \e in {di1,dj1}{\draw[vir] (Tm)--(\e);}
+      \foreach \e in {ai3,aj3}{\draw[vir] (\e)--(Tp);}
+    \else
+      % selected network: i first on c1; j overtakes i at v2 (j first on c2); different tracks, route headway active
+      \draw[crit] (Tm.east)--(di1.west); \draw[crit] (di1)--(dj1); \draw[crit] (dj1)--(aj2); \draw[crit] (aj2)--(dj2);
+      \draw[crit] (dj2)--(di2); \draw[crit] (di2)--(ai3); \draw[crit] (ai3.east)--(Tp.west);
+      \draw[run] (di1)--(ai2); \draw[dwl] (ai2)--(di2); \draw[run] (di2)--(ai3);
+      \node[font=\scriptsize,anchor=south] at (4.2,2.04) {$\eta_i=1$};
+      \draw[run] (dj1)--(aj2); \draw[dwl] (aj2)--(dj2); \draw[run] (dj2)--(aj3);
+      \draw[hws] (di1)--node[left,font=\scriptsize,blue!65!black]{$h$} (dj1);
+      \draw[hws] (ai2) to[bend right=18] (aj2);
+      \draw[hws] (dj2) to[bend right=18] node[right,font=\scriptsize,blue!65!black,pos=0.6]{$h$} (di2);
+      \draw[hws] (aj3)--(ai3);
+      \draw[stns] (ai2) to[bend left=10] (aj2.north east);
+      \node[font=\scriptsize,text=orange!80!black,anchor=west] at (3.75,1.0) {$h_{\rho\rho'}$};
+      \foreach \e in {di1,dj1}{\draw[vir] (Tm)--(\e);}
+      \foreach \e in {ai3,aj3}{\draw[vir] (\e)--(Tp);}
+      \node[red!70!black,font=\scriptsize,anchor=north] at (4.2,-0.95) {critical path: length $=S$ (Proposition~\ref{prop:longest})};
+    \fi
+  \end{tikzpicture}}
+\begin{tikzpicture}[font=\footnotesize]
+  \node (a) at (0,0) {\eanbase{1}};
+  \node[anchor=north] (b) at ([yshift=-4mm]a.south) {\eanbase{2}};
+  \node[anchor=south west,font=\footnotesize\bfseries] at (a.north west) {(a) Event-activity network with disjunctive and conditional activities};
+  \node[anchor=south west,font=\footnotesize\bfseries] at (b.north west) {(b) Network after selecting stops, orders, and station routings};
+  % legend
+  \matrix[anchor=north,below=3mm of b,column sep=3mm,row sep=1mm,font=\scriptsize,
+          nodes={anchor=west}] {
+    \draw[-{Stealth[length=4pt]},line width=0.7pt] (0,0)--(0.6,0); & \node{running activity}; &
+    \draw[-{Stealth[length=4pt]},line width=0.7pt,densely dashdotted] (0,0)--(0.6,0); & \node{dwell activity}; &
+    \draw[{Stealth[length=4pt]}-{Stealth[length=4pt]},line width=0.6pt,blue!65!black,dashed] (0,0)--(0.6,0); & \node{section headway pair (order $z$)}; \\
+    \draw[{Stealth[length=4pt]}-{Stealth[length=4pt]},line width=0.6pt,orange!80!black,dotted] (0,0)--(0.6,0); & \node{track/route activity (if selected)}; &
+    \draw[-{Stealth[length=4pt]},line width=0.5pt,gray] (0,0)--(0.6,0); & \node{makespan activity}; &
+    \draw[line width=2.2pt,red!70!black,opacity=0.35] (0,0)--(0.6,0); & \node{critical (tight) activities}; \\
+  };
+\end{tikzpicture}

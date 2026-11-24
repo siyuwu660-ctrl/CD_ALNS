@@ -1,0 +1,53 @@
+% Figure 1: macroscopic line and microscopic station layouts (TikZ)
+\begin{tikzpicture}[x=1cm,y=1cm,font=\footnotesize,
+  stn/.style={circle,draw=gray!70!black,fill=white,inner sep=0pt,minimum size=5pt},
+  hub/.style={circle,draw=blue!60!black,fill=blue!12,inner sep=0pt,minimum size=8pt},
+  sec/.style={-{Stealth[length=4pt]},gray!70!black,line width=0.5pt},
+  trk/.style={gray!75,line width=0.6pt},
+  sel/.style={blue!65!black,line width=1.6pt},
+  sw/.style={circle,draw=gray!75,fill=white,inner sep=0pt,minimum size=2.4pt},
+  tlab/.style={font=\scriptsize,inner sep=1pt,anchor=south}]
+% ---------------- (a) macroscopic line
+\node[anchor=west,font=\footnotesize\bfseries] at (-0.15,0.75) {(a) Macroscopic level: train movements along the line};
+\foreach \n/\x in {O/0,W/2.6,Z/11.0,T/13.6}{\node[stn] (\n) at (\x,0) {}; \node[above=1pt] at (\n.north) {$\n$};}
+\node[hub] (X) at (5.2,0) {}; \node[above=1pt] at (X.north) {$X$};
+\node[hub] (Y) at (8.4,0) {}; \node[above=1pt] at (Y.north) {$Y$};
+\draw[sec] (O)--(W); \draw[sec] (W)--(X); \draw[sec] (X)--(Y); \draw[sec] (Y)--(Z); \draw[sec] (Z)--(T);
+\node[tlab] at (1.3,0.03) {Running times};
+\node[tlab] at (6.8,0.03) {Headways and train orders};
+\node[tlab] at (12.3,0.03) {Stopping patterns};
+% ---------------- station boxes and links
+\draw[rounded corners=3pt,draw=gray!60,fill=gray!4] (0,-1.15) rectangle (6.55,-4.85);
+\draw[rounded corners=3pt,draw=gray!60,fill=gray!4] (7.05,-1.15) rectangle (13.6,-4.85);
+\draw[dashed,blue!60!black] (X.south west)--(0,-1.15); \draw[dashed,blue!60!black] (X.south east)--(6.55,-1.15);
+\draw[dashed,blue!60!black] (Y.south west)--(7.05,-1.15); \draw[dashed,blue!60!black] (Y.south east)--(13.6,-1.15);
+\node[fill=white,inner sep=1pt,text=blue!60!black,font=\scriptsize] at (2.0,-0.62) {Shared arrival/departure times and stop plans};
+\node[fill=white,inner sep=1pt,text=blue!60!black,font=\scriptsize] at (11.6,-0.62) {Shared arrival/departure times and stop plans};
+\node[anchor=west,font=\footnotesize\bfseries] at (0.1,-1.42) {(b) Microscopic level: station $X$};
+\node[anchor=west,font=\footnotesize\bfseries] at (7.15,-1.42) {(c) Microscopic level: station $Y$};
+% ---------------- generic station drawing: #1 x-shift, list of track y/labels, selected track y
+\foreach \sx/\tracks/\ysel in {
+   0/{-2.15/Track 1,-2.95/Track 3 (main track),-3.75/Track 2},
+   7.05/{-1.9/Track 1,-2.425/Track 2,-2.95/Track 3 (main track),-3.475/Track 4,-4.0/Track 5}}{
+ \begin{scope}[shift={(\sx,0)}]
+  \def\ym{-2.95}
+  \foreach \y/\lab in \tracks {
+    \draw[trk] (1.35,\ym)--(1.95,\y)--(4.55,\y)--(5.15,\ym);
+    \node[sw] at (1.95,\y) {}; \node[sw] at (4.55,\y) {};
+    \node[tlab] at (3.25,\y) {\lab};}
+  \draw[trk] (0.25,\ym)--(1.35,\ym); \draw[trk] (5.15,\ym)--(6.3,\ym);
+  \node[anchor=west,font=\scriptsize] at (0.1,-4.3) {Entry throat area};
+  \node[anchor=east,font=\scriptsize] at (6.45,-4.3) {Exit throat area};
+  \node[text=blue!65!black,font=\scriptsize] at (3.27,-4.62) {Receiving route + arrival--departure track + departure route};
+ \end{scope}}
+% selected alternatives
+\draw[sel] (0.25,-2.95)--(1.35,-2.95)--(1.95,-3.75)--(4.55,-3.75)--(5.15,-2.95)--(6.0,-2.95);
+\draw[sel,-{Stealth[length=6pt]}] (5.9,-2.95)--(6.3,-2.95);
+\draw[sel] (7.3,-2.95)--(8.4,-2.95)--(9.0,-2.425)--(11.6,-2.425)--(12.2,-2.95)--(13.05,-2.95);
+\draw[sel,-{Stealth[length=6pt]}] (12.95,-2.95)--(13.35,-2.95);
+\node[tlab,text=blue!65!black,fill=gray!4] at (3.25,-3.75) {Track 2};
+\node[tlab,text=blue!65!black,fill=gray!4] at (10.3,-2.425) {Track 2};
+% ---------------- legend
+\draw[sel] (0.3,-5.25)--(1.1,-5.25); \node[anchor=west] at (1.2,-5.25) {Selected station routing alternative};
+\draw[trk] (7.35,-5.25)--(8.15,-5.25); \node[anchor=west] at (8.25,-5.25) {Other station routing alternatives};
+\end{tikzpicture}

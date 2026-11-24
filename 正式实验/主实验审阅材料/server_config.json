@@ -1,0 +1,43 @@
+{
+  "runtime": "net8.0",
+  "architecture": "win-x64",
+  "gurobi": "10.0.1",
+  "executable": "bin/GurobiTimetablingResearch.exe",
+  "results": "results",
+  "wallClockGraceSeconds": 120,
+  "cases": [
+    {
+      "id": "SMALL",
+      "path": "data/SMALL_5S_30T_ONEWAY_V3",
+      "total": 3600,
+      "reserve": 600,
+      "macro": 600,
+      "bound": 600,
+      "trains": 30,
+      "stations": 5,
+      "stationQuotas": 6
+    },
+    {
+      "id": "JZ",
+      "path": "data/JZ",
+      "total": 21600,
+      "reserve": 600,
+      "macro": 3600,
+      "bound": 0,
+      "trains": 60,
+      "stations": 12,
+      "stationQuotas": 5
+    },
+    {
+      "id": "JH",
+      "path": "data/JH",
+      "total": 21600,
+      "reserve": 600,
+      "macro": 3600,
+      "bound": 0,
+      "trains": 101,
+      "stations": 29,
+      "stationQuotas": 21
+    }
+  ]
+}

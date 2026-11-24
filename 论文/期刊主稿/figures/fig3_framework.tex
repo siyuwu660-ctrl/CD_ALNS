@@ -1,0 +1,26 @@
+% Figure 3: framework of the conflict-driven ALNS (TikZ)
+\begin{tikzpicture}[font=\footnotesize,
+  phase/.style={draw=gray!70!black,rounded corners=1.5pt,align=center,inner sep=3pt,text width=36mm,minimum height=11mm,fill=blue!5},
+  stp/.style={draw=gray!70!black,rounded corners=1.5pt,align=center,inner sep=2pt,text width=24.5mm,minimum height=13mm,fill=white,font=\scriptsize},
+  arr/.style={-{Stealth[length=4pt]},gray!30!black,line width=0.5pt}]
+% phases
+\node[phase,fill=gray!8] (p1) at (0,0) {\textbf{Phase 1}\\Macroscopic timetable\\construction};
+\node[phase] (p2) at (52mm,0) {\textbf{Phase 2}\\Joint feasibility search:\\resolve station conflicts};
+\node[phase] (p3) at (104mm,0) {\textbf{Phase 3}\\Joint quality search:\\reduce the timetable makespan};
+\draw[arr] (p1) -- node[above=1pt,font=\scriptsize,align=center]{macro.\\feasible} (p2);
+\draw[arr] (p2) -- node[above=1pt,font=\scriptsize,align=center]{jointly\\feasible} (p3);
+% iteration loop shared by all phases
+\node[stp] (s1) at (-6mm,-25mm) {Select a destroy operator and a neighborhood size (adaptive)};
+\node[stp] (s2) at (22.5mm,-25mm) {Destroy: release conflict-related decisions and frequency compensation};
+\node[stp] (s3) at (51mm,-25mm) {Repair: solve the restricted MILP with all linking constraints};
+\node[stp] (s4) at (79.5mm,-25mm) {Check frequencies, train movements, and platforming};
+\node[stp] (s5) at (108mm,-25mm) {Update weights and search state; store the best timetable};
+\foreach \a/\b in {s1/s2,s2/s3,s3/s4,s4/s5}{\draw[arr] (\a) -- (\b);}
+\draw[arr] (s5.south) -- ++(0,-3mm) -| node[pos=0.25,below,font=\scriptsize]{next iteration} (s1.south);
+\node[draw=gray!50,dashed,rounded corners=2pt,fit=(s1)(s5),inner sep=2.5mm,yshift=0.5mm] (loop) {};
+\node[anchor=south,font=\scriptsize,fill=white,inner sep=1pt] at (26mm,0 |- loop.north) {Iteration within each phase};
+\draw[arr,dashed] (p1.south) -- (p1.south |- loop.north);
+\draw[arr,dashed] (p2.south) -- (p2.south |- loop.north);
+\draw[arr,dashed] (p3.south) -- (p3.south |- loop.north);
+\node[anchor=north,font=\scriptsize,align=center] at ([yshift=-5mm]loop.south) {At termination: return the best jointly feasible timetable, if one has been found};
+\end{tikzpicture}

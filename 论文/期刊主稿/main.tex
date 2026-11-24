@@ -1,0 +1,94 @@
+% Manuscript for Computers & Industrial Engineering (Elsevier, elsarticle class)
+\documentclass[preprint,12pt,authoryear]{elsarticle}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs,array,multirow,threeparttable}
+\usepackage[table]{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,matrix}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage[most]{tcolorbox}
+\usepackage{lineno}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalise,nameinlink]{cleveref}
+\usepackage{geometry}
+\geometry{a4paper,margin=25mm}
+\setstretch{1.25}
+\linenumbers
+\biboptions{authoryear}
+\journal{Computers \& Industrial Engineering}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{remark}{Remark}
+\newcommand{\lb}[1]{\underline{#1}}
+\newcommand{\ub}[1]{\overline{#1}}
+\newcommand{\Nset}{\mathcal{N}}
+\newcommand{\Aset}{\mathcal{A}}
+\newcommand{\Eset}{\mathcal{E}}
+\newcommand{\Rset}{\mathcal{R}}
+\newcommand{\Qset}{\mathcal{Q}}
+\newcommand{\Iset}{\mathcal{I}}
+\newcommand{\Vset}{\mathcal{V}}
+\newcommand{\Cset}{\mathcal{C}}
+\newcommand{\Bset}{\mathcal{B}}
+\newcommand{\Gset}{\mathcal{G}}
+\newcommand{\Hset}{\mathcal{H}}
+\newcommand{\Kset}{\mathcal{K}}
+% Placeholder for experiments that still have to be run (to be removed before submission)
+\newtcolorbox{pending}[1][]{enhanced,breakable,colback=orange!6,colframe=orange!70!black,fonttitle=\bfseries\small,
+  title={Experiment to be added#1},fontupper=\small,left=4pt,right=4pt,top=3pt,bottom=3pt}
+\newcommand{\tbd}{\textcolor{orange!80!black}{\textbf{[TBD]}}}
+\hyphenation{make-span make-spans time-table time-tables time-tabling plat-form-ing}
+
+\begin{document}
+\begin{frontmatter}
+
+\title{Integrated train timetabling, stop planning, and platforming on an event-activity network: A conflict-driven adaptive large neighborhood search}
+
+\author[bjtu1,bjtu2]{Siyu Wu}
+\author[bjtu1,bjtu2,lzjtu]{Lei Nie\corref{cor1}}
+\ead{lnie@bjtu.edu.cn}
+\author[bjtu1,polyu]{Zhiyuan Yao}
+\author[bjtu1,bjtu2,polyu]{Kewei Cao}
+\cortext[cor1]{Corresponding author.}
+\affiliation[bjtu1]{organization={Frontiers Science Center for Smart High-Speed Railway System, Beijing Jiaotong University},city={Beijing},country={China}}
+\affiliation[bjtu2]{organization={School of Traffic and Transportation, Beijing Jiaotong University},city={Beijing},country={China}}
+\affiliation[lzjtu]{organization={School of Traffic and Transportation, Lanzhou Jiaotong University},city={Lanzhou},country={China}}
+\affiliation[polyu]{organization={Department of Logistics and Maritime Studies, The Hong Kong Polytechnic University},city={Hong Kong},country={China}}
+
+\begin{abstract}
+Integrating stopping decisions into train timetabling can improve the use of railway capacity, but every stop change also alters station service frequencies and the use of station tracks and routes. This paper studies the integrated train timetabling, stop planning, and platforming problem for prescribed train services. The problem is represented on an event-activity network whose nodes are arrival and departure events and whose arcs are running, dwell, headway, track occupation, and route headway activities; activities between different trains are disjunctive and depend on the stopping and station routing decisions. On this network, we formulate a mixed-integer linear programming model with continuous event times that minimizes the timetable makespan, subject to service frequency requirements, maximum travel times, maintenance windows, overtaking rules, track occupation, and route headways. Once all discrete decisions are fixed, the makespan equals the length of a longest path in the selected network. We propose a conflict-driven adaptive large neighborhood search in which nine destroy operators release the decisions linked to macroscopic violations, station conflicts, or critical activities, together with the compensating stops and time shifts required by the service frequency requirements, and a restricted mixed-integer program repairs them. In experiments on three cases with up to 29 stations and 101 trains, the algorithm reaches the proven optimal makespan in the small case; in the medium and large cases it quickly finds jointly feasible timetables and further reduces the makespan, whereas direct mixed-integer programming and an adapted logic-based Benders decomposition find no feasible timetable within six hours.
+\end{abstract}
+
+\begin{highlights}
+\item Timetabling, stop planning, and platforming modelled on an event-activity network.
+\item For a fixed structure, the makespan equals a longest path in the selected network.
+\item Destroy operators couple station conflicts with service frequency compensation.
+\item Restricted MILP repairs retain all constraints linking free and fixed decisions.
+\item Feasible timetables are found where direct MILP and Benders decomposition fail.
+\end{highlights}
+
+\begin{keyword}
+Train timetabling \sep Stop planning \sep Train platforming \sep Event-activity network \sep Adaptive large neighborhood search \sep Matheuristic \sep Mixed-integer linear programming
+\end{keyword}
+\end{frontmatter}
+
+\input{sections/s1_introduction}
+\input{sections/s2_literature}
+\input{sections/s3_problem}
+\input{sections/s4_model}
+\input{sections/s5_algorithm}
+\input{sections/s6_experiments}
+\input{sections/s7_insights}
+\input{sections/s8_conclusions}
+\input{sections/s9_declarations}
+
+\bibliographystyle{elsarticle-harv}
+\bibliography{refs}
+
+\appendix
+\input{sections/appendix}
+\end{document}

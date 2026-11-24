@@ -1,0 +1,176 @@
+\section{Mathematical formulation}\label{sec:model}
+The formulation follows the activity types of \cref{sec:ean}. It links train movements and station routings through shared arrival and departure times and stop decisions. All times, durations, headways, and big-$M$ coefficients are in seconds.
+
+\subsection{Notation}
+\Cref{tab:notation} summarizes the notation. At each station, a train has at most one operation, which is either a stop or a pass. An operation $n=(i,v)\in\Nset$ represents train $i$ stopping at or passing through station $v$; the train associated with operation $n$ is denoted by $i(n)$, and $\Nset_v$ contains the operations at station $v$. Consecutive operations $n$ and $n^+$ of the same train define a running arc $\ell=(n,n^+)\in\Aset$ on a directed section $c\in\Cset$. The event set $\Eset$ comprises the departures at origins, the arrivals at destinations, and the arrivals and departures at intermediate stations; $t_e$ denotes the time of event $e$, and $a_n$ and $d_n$ denote the arrival and departure times of operation $n$ where these events exist.
+
+The stop--pass status of an operation is denoted by $m\in\{0,1\}$, where $m=1$ denotes a stop and $m=0$ a pass. For operation $n$ with status $m$, $\Rset^m_n$ is the set of station routing alternatives; alternative $r$ specifies the track $k(r)$, the receiving route $\rho^{\mathrm{in}}(r)$, and the departure route $\rho^{\mathrm{out}}(r)$. Alternatives are indexed separately by stop--pass status, even when they use the same track and routes. Let $\Gset_n\subseteq\{\mathrm{in},\mathrm{out}\}$ be the set of route types required by operation $n$, where ``in'' denotes the receiving route and ``out'' the departure route: $\Gset_n=\{\mathrm{out}\}$ at an origin, $\{\mathrm{in}\}$ at a destination, and $\{\mathrm{in},\mathrm{out}\}$ at an intermediate station. The hard event bounds $[L_e,U_e]$, derived from the given arrival and departure time windows, apply to every timetable and remain valid for all admissible stopping and ordering decisions. They differ from the preferred event windows $[\lb{W}_e,\ub{W}_e]$, whose violations contribute to $P$, and from the service-counting windows $[A_q,B_q]$, which determine the stops counted by station rules. For a conditional constraint $f\ge h$, the big-$M$ coefficient is set to $M=\max\{0,h-L_f\}$, where $L_f$ is a valid lower bound of $f$ and $h$ the largest applicable value; a tilde denotes the coefficient of the reverse order.
+
+\begin{table}[tbp]
+\centering\small
+\caption{Notation.}\label{tab:notation}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{tabular}{@{}>{$}l<{$}>{\raggedright\arraybackslash}p{120mm}@{}}\toprule
+\multicolumn{2}{@{}l}{\textit{Sets and indices}}\\
+\Iset,\Vset,\Cset & Trains $i,j$; stations $v$; directed sections $c$\\
+\Nset,\Nset_v & Train operations $n=(i,v)$; operations at station $v$\\
+\Nset^{o},\Nset^{d},\Nset^{\mathrm{int}} & Origin, destination, and intermediate operations\\
+\Aset & Running arcs $\ell=(n,n^+)$ of consecutive operations of a train\\
+\Eset,\Eset^W & Events $e$ (arrivals and departures); events with a preferred window\\
+\Rset^m_n,\Rset_n & Station routing alternatives $r$ of operation $n$ with status $m$; $\Rset_n=\Rset^0_n\cup\Rset^1_n$\\
+\Gset_n & Route types (``in'': receiving, ``out'': departure) required by operation $n$\\
+\Qset^{\mathrm{tr}},\Qset^{\mathrm{st}} & Train stop-count rules; station service frequency rules $q$\\
+\Qset^{J},\Qset^{M} & Maximum travel time rules; maintenance windows\\
+\Nset_q & Operations counted by rule $q$\\
+\Bset_n & Overtaking indicators $b_{ijv}$ of intermediate operation $n=(i,v)$\\
+\multicolumn{2}{@{}l}{\textit{Parameters}}\\
+L_e,U_e & Hard lower and upper bounds of the time of event $e$\\
+r_\ell,\alpha_\ell,\beta_\ell & Pure running time; additional acceleration and deceleration times of arc $\ell$\\
+\bar u_\ell & Maximum running time supplement of arc $\ell$\\
+\delta_n,\bar\delta^N_n,\bar\delta^W_n & Minimum, normal maximum, and waiting maximum dwell times of operation $n$\\
+h^{\vartheta,mm'}_{ijc} & Minimum headway on section $c$ at its departure ($\vartheta=D$) or arrival ($\vartheta=A$) end for stop--pass statuses $(m,m')$\\
+h_{\rho\rho'} & Route headway from route $\rho$ to route $\rho'$\\
+\lb{K}_q,\ub{K}_q & Minimum and maximum number of counted stops of rule $q$\\
+{[A_q,B_q]} & Service-counting window of station rule $q$\\
+T^{\max}_q & Maximum travel time of rule $q$\\
+{[A^M_q,B^M_q]} & Closure period of maintenance window $q$\\
+{[\lb{W}_e,\ub{W}_e]},\omega^\pm_e & Preferred window of event $e$; early and late weights\\
+\multicolumn{2}{@{}l}{\textit{Decision variables}}\\
+a_n,d_n,t_e & Arrival time, departure time; time of event $e$\\
+s_n\in\{0,1\} & 1 if operation $n$ is a stop, 0 if a pass\\
+u_\ell\ge0 & Running time supplement of arc $\ell$\\
+z_{ijc}\in\{0,1\} & Train order on section $c$: 0 if train $i$ precedes train $j$\\
+b_{ijv},\eta_n\in[0,1] & Train $j$ overtakes train $i$ at station $v$; operation $n$ is overtaken\\
+\xi_{\ell q}\in\{0,1\} & 1 if arc $\ell$ is traversed before maintenance window $q$, 0 if after\\
+c_{nq},\lambda^-_{nq},\lambda^+_{nq}\in\{0,1\} & Stop of operation $n$ within, before, or after the window of rule $q$\\
+y_{nr}\in\{0,1\} & 1 if operation $n$ uses station routing alternative $r$\\
+Y^{T}_{nk},Y^{\sigma}_{n\rho} & 1 if operation $n$ uses track $k$; route $\rho$ on side $\sigma\in\Gset_n$\\
+w^{T}_{nn'},w^{\sigma\sigma'}_{nn'}\in\{0,1\} & Track and route-event order: 1 if operation $n$ precedes $n'$\\
+S,P,R\ge0 & Timetable makespan, preferred-window deviation penalty, total supplement\\\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Objective function}
+Let $o_i$ and $f_i$ be the origin and destination operations of train $i$. With auxiliary variables $T^-,T^+\in\mathbb{R}$ (the times of the virtual events) and $p^-_e,p^+_e\ge0$,
+\begin{equation}
+T^-\le d_{o_i},\quad T^+\ge a_{f_i}\quad(i\in\Iset),\qquad S=T^+-T^-,\label{eq:span}
+\end{equation}
+\begin{equation}
+p^-_e\ge\lb{W}_e-t_e,\quad p^+_e\ge t_e-\ub{W}_e\quad(e\in\Eset^W),\qquad P=\sum_{e\in\Eset^W}(\omega^-_ep^-_e+\omega^+_ep^+_e),\qquad R=\sum_{\ell\in\Aset}u_\ell.\label{eq:pr}
+\end{equation}
+The objective lexicographically minimizes $(S,P,R)$, where $S$ denotes the timetable makespan, $P$ the weighted deviation from the preferred event windows, and $R$ the total running time supplement. Constraints \eqref{eq:span} are the makespan activities of the network. The secondary objectives distinguish timetables with equal makespans; $P$ favours timetables close to the preferred departure and arrival times, and $R$ avoids unnecessary supplements.
+
+\subsection{Running, dwell, window, and travel time activities}
+\textbf{Event time windows and stop decisions.} Train times must remain within the prescribed event bounds, and stopping decisions must respect mandatory stops and passes. The bounds $\lb{s}_n,\ub{s}_n$ also enforce stops at origins and destinations and exclude stop--pass statuses without admissible station routing alternatives:
+\begin{equation}
+L_e\le t_e\le U_e\quad(e\in\Eset),\qquad \lb{s}_n\le s_n\le\ub{s}_n,\quad s_n\in\{0,1\}\quad(n\in\Nset).\label{eq:bounds}
+\end{equation}
+\textbf{Running and dwell activities.} On arc $\ell=(n,n^+)$, the running time comprises the pure running time, the acceleration and deceleration additions of the stops at both ends, and a bounded supplement. At an intermediate station, the dwell time of a stop lies between the minimum and the normal maximum; the waiting maximum applies only when the train is overtaken ($\eta_n=1$, \cref{sec:headway}). A pass has zero dwell:
+\begin{equation}
+a_{n^+}-d_n=r_\ell+\alpha_\ell s_n+\beta_\ell s_{n^+}+u_\ell,\qquad 0\le u_\ell\le\bar u_\ell\qquad(\ell\in\Aset),\label{eq:run}
+\end{equation}
+\begin{equation}
+\delta_ns_n\le d_n-a_n\le\bar\delta^N_ns_n+(\bar\delta^W_n-\bar\delta^N_n)\eta_n,\qquad 0\le\eta_n\le s_n\qquad(n\in\Nset^{\mathrm{int}}).\label{eq:dwell}
+\end{equation}
+\textbf{Travel time and maintenance window activities.} Rule $q\in\Qset^J$ bounds the travel time from the starting operation $n^o_q$ to the ending operation $n^d_q$, including intermediate dwell. For maintenance window $q\in\Qset^M$, arc $\ell=(n,n^+)$ is unavailable during $[A^M_q,B^M_q]$; the binary indicator $\xi_{\ell q}$ selects traversal before the closure ($\xi_{\ell q}=1$) or after it ($\xi_{\ell q}=0$), and $M^{\mathrm{b}}_{\ell q}$, $M^{\mathrm{a}}_{\ell q}$ are valid coefficients:
+\begin{equation}
+a_{n^d_q}-d_{n^o_q}\le T^{\max}_q\quad(q\in\Qset^J),\qquad a_{n^+}\le A^M_q+M^{\mathrm{b}}_{\ell q}(1-\xi_{\ell q}),\ \ d_n\ge B^M_q-M^{\mathrm{a}}_{\ell q}\xi_{\ell q}\ \ (q\in\Qset^M).\label{eq:maint}
+\end{equation}
+
+\subsection{Service frequency constraints}
+Stopping decisions must satisfy train stop-count and station service requirements. Rule $q\in\Qset^{\mathrm{tr}}$ bounds the number of stops over a prescribed route segment, counting its endpoints only when specified. Rule $q\in\Qset^{\mathrm{st}}$ bounds the number of stopping trains of a given type at a station within the closed window $[A_q,B_q]$. For station service rules, the reference time is $\theta_n=d_n$ at origins and $\theta_n=a_n$ otherwise. The indicator $c_{nq}$ equals one when operation $n$ stops and its reference time lies in the closed window:
+\begin{equation}
+\begin{gathered}
+\lb{K}_q\le\sum_{n\in\Nset_q}s_n\le\ub{K}_q\qquad(q\in\Qset^{\mathrm{tr}}),\\
+c_{nq}=s_n\,\mathbf{1}_{[A_q,B_q]}(\theta_n)\ \ (n\in\Nset_q),\qquad \lb{K}_q\le\sum_{n\in\Nset_q}c_{nq}\le\ub{K}_q\qquad(q\in\Qset^{\mathrm{st}}).
+\end{gathered}\label{eq:freq}
+\end{equation}
+Both window endpoints count, passes contribute zero, and overlapping windows are evaluated independently.
+
+\textbf{Window classification.} To generate candidates with a MILP, the exact counting rule in \eqref{eq:freq} is relaxed by classifying each eligible stop as before, within, or after the window. These classifications are the window activities of the network. The binary variables $\lambda^-_{nq}$ and $\lambda^+_{nq}$ indicate a stop of operation $n$ before or after the window, respectively, with $M^Q_{nq}=\max\{0,B_q-L_{\theta_n},U_{\theta_n}-A_q\}$:
+\begin{equation}
+\begin{gathered}
+\lambda^-_{nq}+c_{nq}+\lambda^+_{nq}=s_n,\qquad
+A_q-M^Q_{nq}(1-c_{nq})\le\theta_n\le B_q+M^Q_{nq}(1-c_{nq}),\\
+\theta_n\le A_q+M^Q_{nq}(1-\lambda^-_{nq}),\qquad
+\theta_n\ge B_q-M^Q_{nq}(1-\lambda^+_{nq})\qquad(q\in\Qset^{\mathrm{st}},\ n\in\Nset_q).
+\end{gathered}\label{eq:freqlin}
+\end{equation}
+If train $i(n)$ passes the station, all three indicators are zero. Since a MILP cannot represent the strict inequalities $\theta_n<A_q$ and $\theta_n>B_q$, constraints \eqref{eq:freqlin} also allow a stop exactly at a window endpoint to be classified as outside the window. Constraints \eqref{eq:freqlin} thus provide a MILP relaxation of the exact closed-window counting rule \eqref{eq:freq}. Every candidate generated with \eqref{eq:freqlin} is recounted under \eqref{eq:freq} before acceptance (\cref{sec:accept}).
+
+\subsection{Section headway, train order, and overtaking constraints}\label{sec:headway}
+Trains sharing a section require minimum separation, which varies with their stop--pass statuses. For operations $n,n'$ of different trains, $h^{mm'}\ge0$ is the minimum headway for statuses $(m,m')$, and $q_{nn'}\in[0,1]$ represents $s_ns_{n'}$. For trains $(i,j)$ sharing directed section $c$, $t^D_{ic}$ and $t^A_{ic}$ denote the upstream departure and the downstream arrival. The status-dependent headway $H(s_n,s_{n'})$ is
+\begin{equation}
+\begin{gathered}
+q_{nn'}\le s_n,\qquad q_{nn'}\le s_{n'},\qquad q_{nn'}\ge s_n+s_{n'}-1,\\
+H(s_n,s_{n'})=h^{00}+(h^{10}-h^{00})s_n+(h^{01}-h^{00})s_{n'}+(h^{11}-h^{10}-h^{01}+h^{00})q_{nn'}.
+\end{gathered}\label{eq:hw}
+\end{equation}
+The disjunctive pair of section headway activities is selected by one train order $z_{ijc}$, which applies at both ends of the section and thus excludes overtaking within sections:
+\begin{equation}
+t^\vartheta_{jc}-t^\vartheta_{ic}\ge H^\vartheta_{ijc}(s)-M^\vartheta_{ijc}z_{ijc},\qquad
+t^\vartheta_{ic}-t^\vartheta_{jc}\ge H^\vartheta_{jic}(s)-\tilde M^\vartheta_{ijc}(1-z_{ijc})\qquad(\vartheta\in\{D,A\}),\label{eq:order}
+\end{equation}
+where $M^\vartheta_{ijc}=\max\{0,\max_{m,m'}h^{\vartheta,mm'}_{ijc}+U_{t^\vartheta_{ic}}-L_{t^\vartheta_{jc}}\}$. Analogous constraints with binary order variables $z^V_{ef}\in\{0,1\}$ separate the arrival and departure events $(e,f)$ of different trains at station $v$ for which a station headway is specified. The minimum headways in \eqref{eq:hw}--\eqref{eq:order} are derived from the route headways as the smallest separation over all admissible route combinations for the given stop--pass statuses, so they are necessary conditions for station feasibility. Imposing a larger value at the macroscopic level would exclude feasible uses of less restrictive routes; the headways of the routes actually selected are imposed in \cref{sec:platforming}.
+
+\textbf{Overtaking.} Station overtaking links a change in train order to an extended dwell. For trains $i$ and $j$ sharing the incoming and outgoing sections $c^-$ and $c^+$ of station $v$, we set $z_{ijc^-}=z_{ijc^+}$ where overtaking is prohibited. Otherwise, $b_{ijv}$ indicates that $j$ overtakes $i$ at $v$, with $i$ ahead on $c^-$ and behind on $c^+$. For an intermediate operation $n=(i,v)$, $\Bset_n$ contains the indicators $b_{ijv}$ of the trains $j$ that may overtake train $i$ at $v$, and $b$ denotes an element of $\Bset_n$. The indicator $\eta_n$ equals one if train $i$ is overtaken at $v$:
+\begin{equation}
+\begin{gathered}
+b_{ijv}\le1-z_{ijc^-},\qquad b_{ijv}\le z_{ijc^+},\qquad b_{ijv}\ge z_{ijc^+}-z_{ijc^-},\\
+\eta_n\ge b\ \ (b\in\Bset_n),\qquad \eta_n\le\textstyle\sum_{b\in\Bset_n}b\le1\qquad(n\in\Nset^{\mathrm{int}}).
+\end{gathered}\label{eq:overtake}
+\end{equation}
+Because the order variables are binary, $b_{ijv}$ takes integer values without being declared binary. The last inequality permits at most one overtaking train per stop, and together with \eqref{eq:dwell} a dwell beyond the normal maximum is only possible if the train is actually overtaken; $\eta_n=0$ if $\Bset_n=\emptyset$.
+
+\subsection{Train platforming constraints}\label{sec:platforming}
+\textbf{Station routing selection.} Each operation must use a compatible combination of track and routes for its stop--pass status. The model selects one alternative consistent with the stop decision and derives the resource-use indicators: $Y^T_{nk}$ equals one when operation $n$ occupies track $k$, and $Y^\sigma_{n\rho}$ when it uses route $\rho$ on side $\sigma\in\Gset_n$:
+\begin{equation}
+\sum_{r\in\Rset_n}y_{nr}=1,\quad\sum_{r\in\Rset^1_n}y_{nr}=s_n,\quad
+Y^T_{nk}=\sum_{r\in\Rset_n:k(r)=k}y_{nr},\quad Y^\sigma_{n\rho}=\sum_{r\in\Rset_n:\rho^\sigma(r)=\rho}y_{nr}\ \ (\sigma\in\Gset_n).\label{eq:select}
+\end{equation}
+\textbf{Track occupation activities.} Operations assigned to the same track must have non-overlapping occupations. The occupation interval $[B_n,E_n]$ is $[d_n,d_n]$ at an origin, $[a_n,a_n]$ at a destination, and $[a_n,d_n]$ at an intermediate station. For $n,n'\in\Nset_v$ with $i(n)\ne i(n')$ and any common admissible track $k$, the binary order $w^T_{nn'}$ selects one activity of the disjunctive pair when both operations select $k$:
+\begin{equation}
+B_{n'}-E_n\ge-M^T_{nn'}(3-w^T_{nn'}-Y^T_{nk}-Y^T_{n'k}),\qquad
+B_n-E_{n'}\ge-\tilde M^T_{nn'}(2+w^T_{nn'}-Y^T_{nk}-Y^T_{n'k}),\label{eq:track}
+\end{equation}
+with, e.g., $M^T_{nn'}=\max\{0,U_{E_n}-L_{B_{n'}}\}$. A pass occupies the point $a_n=d_n$, which cannot lie strictly inside the occupation of another train; contact at the boundary remains subject to the route headways.
+
+\textbf{Route headway activities.} Different trains may conflict on routes through the station throat even when they use different tracks. Let $\tau^{\mathrm{in}}_n=a_n$ and $\tau^{\mathrm{out}}_n=d_n$. For $n,n'\in\Nset_v$ with $i(n)\ne i(n')$, sides $\sigma\in\Gset_n$ and $\sigma'\in\Gset_{n'}$, and applicable routes $(\rho,\rho')$, the binary order $w^{\sigma\sigma'}_{nn'}$ selects the event order on which the route headway is imposed:
+\begin{equation}
+\begin{gathered}
+\tau^{\sigma'}_{n'}-\tau^\sigma_n\ge h_{\rho\rho'}-M^{\sigma\sigma'}_{nn'\rho\rho'}(3-w^{\sigma\sigma'}_{nn'}-Y^\sigma_{n\rho}-Y^{\sigma'}_{n'\rho'}),\\
+\tau^\sigma_n-\tau^{\sigma'}_{n'}\ge h_{\rho'\rho}-\tilde M^{\sigma\sigma'}_{nn'\rho\rho'}(2+w^{\sigma\sigma'}_{nn'}-Y^\sigma_{n\rho}-Y^{\sigma'}_{n'\rho'}).
+\end{gathered}\label{eq:route}
+\end{equation}
+Route pairs with a headway in at least one direction are included, with zero for a missing direction; this covers identical routes ($\rho=\rho'$) and movements on different tracks. The receiving and departure routes of the same operation must be compatible but are not separated by a headway. Only the selected resources activate \eqref{eq:track}--\eqref{eq:route}.
+
+\subsection{Integrated model and structural properties}\label{sec:integrated}
+Let $x$ collect the times, stops, train orders, window and maintenance classifications, and auxiliary variables. Set $X^M$ imposes \eqref{eq:span}--\eqref{eq:overtake} with the exact counting rule \eqref{eq:freq}, and $Y_v(x)$ contains the routing selections and orders at station $v$ satisfying \eqref{eq:select}--\eqref{eq:route}. Together they define the integrated model and its jointly feasible set:
+\begin{equation}
+\begin{gathered}
+\operatorname{lexmin}\,(S,P,R)\quad\text{s.t.}\quad x\in X^M,\quad (y_v,w_v)\in Y_v(x)\ \ (v\in\Vset),\\
+X^{\mathrm{joint}}=\{x\in X^M:Y_v(x)\ne\emptyset\ \text{for all}\ v\in\Vset\}.
+\end{gathered}\label{eq:model}
+\end{equation}
+Replacing \eqref{eq:freq} with \eqref{eq:freqlin} gives the MILP used to generate candidates; its solutions must be recounted under \eqref{eq:freq} before acceptance. We call the vector $\pi=(s,z,z^V,\eta,\xi,c,\lambda,y,w)$ of all discrete decisions the \emph{structure} of a timetable.
+
+\begin{proposition}[Station decomposition]\label{prop:decomp}
+For fixed event times and stop decisions $x$, the constraints \eqref{eq:select}--\eqref{eq:route} decompose into independent station platforming problems, one for each $v\in\Vset$, and $x\in X^{\mathrm{joint}}$ if and only if each of them is feasible.
+\end{proposition}
+\begin{proof}
+For fixed $x$, the variables $y_{nr}$, $Y$, and $w$ of operations at station $v$ only appear in constraints \eqref{eq:select}--\eqref{eq:route} written for pairs $n,n'\in\Nset_v$. No constraint links variables of different stations, so the feasibility problem separates by station.
+\end{proof}
+
+\begin{proposition}[Makespan of a fixed structure]\label{prop:longest}
+Let $\pi$ be a structure, and let $G(\pi)$ be the network obtained from the event-activity network by keeping, for each disjunctive pair, the activity selected by $\pi$ and by setting all activity lengths according to $\pi$. If the system of event times consistent with $\pi$ is feasible, then the minimum makespan $S^*(\pi)$ subject to \eqref{eq:span}--\eqref{eq:route} with $\pi$ fixed equals the length of a longest path from $T^-$ to $T^+$ in $G(\pi)$. Moreover, the system is feasible if and only if $G(\pi)$ contains no cycle of positive length.
+\end{proposition}
+\begin{proof}
+With $\pi$ fixed, every constraint in \eqref{eq:span}--\eqref{eq:route} reduces to a difference constraint $t_f-t_e\ge l_{ef}$ between two event times, or to a bound $L\le t_e\le U$, which is the difference constraint with the time-origin event $o$, $t_o=0$. This holds for the running activities \eqref{eq:run} after eliminating $u_\ell\in[0,\bar u_\ell]$ (two difference constraints), the dwell activities \eqref{eq:dwell}, the travel time and maintenance activities \eqref{eq:maint}, the window classifications \eqref{eq:freqlin}, the selected section headways \eqref{eq:order}, and the active track occupation and route headway activities \eqref{eq:track}--\eqref{eq:route}; the inactive ones are redundant by the choice of the big-$M$ coefficients. A system of difference constraints is feasible if and only if its constraint graph has no positive cycle, and the minimum of $t_{T^+}-t_{T^-}$ is the length of a longest $T^-$--$T^+$ path, which follows from linear programming duality (the dual is a unit-flow problem from $T^-$ to $T^+$) and is the classical result for project networks with minimum and maximum time lags \citep{Bartusch1988}.
+\end{proof}
+
+\Cref{prop:longest} has two consequences that are used by the algorithm. First, for a fixed structure, the timetable can be re-optimized by a linear program in which all event times move together; we use this in the fixed-structure re-optimization of \cref{sec:accept}. Second, the makespan of a structure can only be reduced by changing a decision that affects every longest path, i.e., the stop, order, routing, or window classification associated with at least one critical activity. The quality search therefore starts its neighborhoods from the trains that determine the earliest departure and the latest arrival and from chains of tight activities (\cref{sec:joint}).
+
+\begin{remark}[Model size and complexity]\label{rem:size}
+The platforming subproblem alone is NP-complete when each train has three or more routing possibilities \citep{Kroon1997}. In the integrated model, the numbers of order variables $w$ and of constraints \eqref{eq:track}--\eqref{eq:route} grow quadratically with the number of operations per station and linearly with the number of route pairs with a headway. \Cref{tab:size} in \cref{sec:cases} reports the sizes of the full MILP for the test cases, which reach about $1.4\times10^7$ constraints and $7.0\times10^5$ binary variables in the large-scale case.
+\end{remark}

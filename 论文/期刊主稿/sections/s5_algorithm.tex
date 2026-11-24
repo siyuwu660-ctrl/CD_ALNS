@@ -1,0 +1,168 @@
+\section{Conflict-driven adaptive large neighborhood search}\label{sec:alg}
+Model \eqref{eq:model} becomes difficult to solve directly as the numbers of trains and stations grow. We therefore develop a CD-ALNS. Unlike classical ALNS for timetabling, which removes and reinserts trains by heuristic rules \citep[e.g.,][]{Dong2020}, each destroy operator of the CD-ALNS releases a conflict-related subset of stop, event time, train order, and platforming decisions, and the repair step re-optimizes them by solving a restricted MILP with a commercial solver while the remaining decisions are fixed. The method is thus a MILP-based neighborhood search \citep{Fischetti2003,Danna2005} whose neighborhoods are defined on the event-activity network and adapted by the ALNS mechanism of \citet{Ropke2006}.
+
+\subsection{Algorithm framework}\label{sec:framework}
+The algorithm has three phases (\cref{fig:framework} and \cref{alg:cdalns}): macroscopic timetable construction (Phase 1), joint feasibility search (Phase 2), and joint quality search (Phase 3). In each iteration, conflict information determines the decisions to be reconsidered, adaptive selection chooses a destroy operator and a neighborhood size, and the restricted MILP determines the revised decisions. Each phase keeps its own operator weights. Three solutions are distinguished: the \emph{current solution}, from which neighborhoods are built; a pool of \emph{working candidates}, which are completely evaluated but may still contain conflicts; and the \emph{best jointly feasible timetable}, which is only replaced by a strictly better jointly feasible timetable. All steps, including model construction, solution, and feasibility checks, share one time limit. The failure or timeout of a restricted repair does not prove infeasibility of the original problem; it only triggers the selection of another operator or a larger neighborhood.
+
+\begin{figure}[tb]
+\centering
+\resizebox{\textwidth}{!}{\input{figures/fig3_framework.tex}}
+\caption{Framework of the CD-ALNS. Each phase repeats the destroy-and-repair iteration with its own adaptive weights.}\label{fig:framework}
+\end{figure}
+
+\begin{algorithm}[tbp]
+\caption{Conflict-driven adaptive large neighborhood search (CD-ALNS)}\label{alg:cdalns}
+\small
+\begin{algorithmic}[1]
+\Require instance data; time limit $\Theta$; operator sets $\mathcal{O}^M=\{M1,\dots,M4\}$, $\mathcal{O}^J=\{J1,\dots,J5\}$; three scales
+\Ensure best jointly feasible timetable $x^\star$, or the status that none was found
+\State $x^\star\gets\emptyset$; initialize the weights $w^M,w^F,w^Q$ of all operator--scale pairs to one
+\State construct a stopping pattern satisfying \eqref{eq:freq} under provisional times; solve a sparse macroscopic MILP $\to x$ \Comment{\cref{sec:init}}
+\While{$x$ violates a macroscopic constraint \textbf{and} time remains} \Comment{Phase 1}
+  \State diagnose the violated activities of $x$; select $(o,\kappa)\in\mathcal{O}^M\times\{1,2,3\}$ by \eqref{eq:select-prob} with $w^M$
+  \State release the decisions defined by $(o,\kappa)$ and the compensation set (\cref{alg:nbh}); solve the restricted macroscopic MILP $\to x'$
+  \State if $x'$ improves the diagnostic score, $x\gets x'$; reward $(o,\kappa)$ and update $w^M$ by \eqref{eq:weights}
+\EndWhile
+\State assign station routings to $x$ station by station (\cref{prop:decomp}), allowing elastic slacks $\to$ working pool $\mathcal{W}$
+\While{time remains}
+  \If{$x^\star=\emptyset$} \Comment{Phase 2}
+    \State take an anchor $x$ from $\mathcal{W}$; seeds $\gets$ operations in track or route conflicts of $x$; weights $w\gets w^F$; ranking $\Phi\gets\Phi^F$
+  \Else \Comment{Phase 3}
+    \State take $x$ as the current quality solution; seeds $\gets$ trains defining $T^-$ and $T^+$ in $x$; $w\gets w^Q$; $\Phi\gets\Phi^Q$
+    \State occasionally apply fixed-structure re-optimization to $x^\star$ (\cref{sec:accept})
+  \EndIf
+  \State select $(o,\kappa)\in\mathcal{O}^J\times\{1,2,3\}$ by \eqref{eq:select-prob} with $w$, skipping duplicates and suspended pairs
+  \State build the neighborhood $\mathcal{F}$ from the seeds by \cref{alg:nbh}; solve the restricted MILP over $\mathcal{F}$ $\to x'$ \Comment{\cref{sec:repair}}
+  \State recount service frequencies under \eqref{eq:freq}; correct window misclassifications if necessary
+  \State evaluate $x'$ completely; if $x'$ has no unresolved station, insert it into $\mathcal{W}$ ranked by $\Phi$
+  \If{$x'$ passes all macroscopic and microscopic checks \textbf{and} $\Phi^Q(x')\prec\Phi^Q(x^\star)$}
+    \State $x^\star\gets x'$ \Comment{\cref{sec:accept}}
+  \EndIf
+  \State update the current solution by the acceptance rule; reward $(o,\kappa)$ and update $w$ by \eqref{eq:weights}; update stagnation counters
+\EndWhile
+\State \Return $x^\star$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Initialization and macroscopic timetable construction}\label{sec:init}
+\textbf{Initial candidate.} Initialization first selects a stopping pattern that satisfies the train stop-count bounds and the station service frequency requirements under provisional event times. These times establish service-count compatibility but do not yet constitute a feasible timetable. A reduced macroscopic MILP then imposes all train-level activities (running, dwell, window, and travel time activities) and a selected set of inter-train relations, namely the section headway pairs of train pairs that are close in time. Inter-train relations that are omitted from the reduced model are not dropped from the problem: complete macroscopic checks evaluate all of them, and relations found violated are added to the model in later repairs. The candidate generator may keep several candidates and returns the best according to the diagnostic score below.
+
+\textbf{Macroscopic diagnosis.} The complete macroscopic check evaluates every activity in \eqref{eq:bounds}--\eqref{eq:overtake}. It reports the violated train pairs and operations and computes the weighted diagnostic score
+\begin{equation}
+D(x)=\Delta^{H}(x)+180\,n^{O}(x)+600\,n^{W}(x)+600\,n^{Q}(x),\label{eq:diag}
+\end{equation}
+where $\Delta^H$ is the total headway deficit in seconds, $n^O$ the number of other order and overtaking violations, $n^W$ the number of long dwells without an actual overtaking, and $n^Q$ the total violation of service frequency bounds. $D$ ranks candidates and determines rewards; it is not a feasibility certificate, and only a candidate with all macroscopic activities satisfied proceeds to the joint search.
+
+\textbf{Macroscopic operators.} Conflict diagnosis identifies the train pairs and operations around which the four macroscopic operators in \cref{tab:operators} act:
+\begin{itemize}
+\item \textbf{M1 Time} adjusts arrival and departure times and supplements in \eqref{eq:run}--\eqref{eq:dwell} within a time radius to remove headway deficits in \eqref{eq:order}, without changing stops or orders.
+\item \textbf{M2 Order--time} additionally permits re-sequencing selected conflicting train pairs, consistently with \eqref{eq:order}--\eqref{eq:overtake}; on the network, it re-selects the section headway activity of these pairs.
+\item \textbf{M3 Waiting support} acts only on long dwells without overtaking. Releasing the orders on the sections before and after the station permits either an actual overtaking or a shorter dwell under \eqref{eq:dwell} and \eqref{eq:overtake}. It is not applicable when no such dwell exists.
+\item \textbf{M4 Stop--frequency} permits optional stop changes under \eqref{eq:bounds} and \eqref{eq:freq} for the trains involved in conflicts or frequency violations, together with the service frequency compensation of \cref{alg:nbh} and the related orders and times.
+\end{itemize}
+The three scales of every macroscopic operator limit the restricted model to at most 160, 320, or 640 train pairs and the movement of event times to 600, 1200, or 2400~s; M4 may change at most 6, 12, or 18 stops. All section constraints, including those linking released and fixed decisions, are retained, and headway violations are represented by nonnegative slacks during Phase~1. When restricted repairs fail or repeatedly time out, the scale is enlarged. After three iterations without improvement, the search alternates one iteration of a rule-based bounded repair with three adaptive iterations; rewards obtained by the rule-based fallback are not credited to any operator.
+
+\subsection{Joint neighborhoods with service frequency compensation}\label{sec:joint}
+\textbf{Seeds and expansion.} In the joint feasibility phase, neighborhoods are built around the train operations involved in track occupation or route headway conflicts, i.e., violated station activities. Conflicts are taken in decreasing order of violation, together with other conflicts at the same or adjacent stations within about 600~s. In the quality phase, the seeds are the trains that determine the earliest origin departure and the latest destination arrival in \eqref{eq:span}, including ties, i.e., the start and end of the critical paths of \cref{prop:longest}. In both phases, the seeds are expanded to the operations of the same trains at neighboring stations, to the trains that use the same stations at close times, and to the operations needed for service frequency compensation. The three scales allow at most 12, 20, or 32 trains and 4, 8, or 12 stop changes, with a time radius of 600~s, 1800~s, or no radius, and the expansion covers 2, 4, or all neighboring stations of each seed train.
+
+\textbf{Joint operators.} Five joint operators are used in Phases 2 and 3:
+\begin{itemize}
+\item \textbf{J1 Joint} coordinates stops, orders, times, and routings throughout the neighborhood, coupling the service counts in \eqref{eq:freq} with the station activities \eqref{eq:select}--\eqref{eq:route}. It is the most flexible operator and handles general station conflicts.
+\item \textbf{J2 Time} retains the stops and all section orders in \eqref{eq:order} and releases the event times; the station routings at the affected stations are re-optimized. It resolves conflicts that can be removed by shifting arrival and departure times combined with a change of track or route, without changing the stopping pattern.
+\item \textbf{J3 Service frequency} starts from J1 and adds the stopping and timing decisions identified through the affected service-count constraints by \cref{alg:nbh}. At the three scales it may include up to 32, 48, or 64 operations of 12, 20, or 32 trains. Train orders and station routings remain jointly adjustable within the resulting neighborhood.
+\item \textbf{J4 Boundary} adds up to 2, 4, or 6 trains outside the J1 neighborhood that interact with the selected trains through the section headway, track occupation, or route headway activities \eqref{eq:order}, \eqref{eq:track}, and \eqref{eq:route} and have the highest conflict pressure across the boundary. At the largest scale, their operations along the entire route are released.
+\item \textbf{J5 Tight temporal links} expands J1 along chains of tight or nearly tight activities under the current stopping and routing decisions, i.e., running, dwell, train order, track occupation, and route headway activities with (almost) zero slack. The associated decisions are reconsidered jointly with any required service frequency compensation. J5 is activated after three iterations without improvement in the feasibility search; in the quality search, it releases the train orders and station routings on the critical activities that block further makespan reduction (\cref{prop:longest}).
+\end{itemize}
+Neighborhoods that release the same decisions with the same time ranges and stop-change limits are considered only once, so that renaming an operator does not increase its selection probability. A neighborhood that has failed for the same anchor is suspended for 4, 8, 16, and then 32 iterations; when all applicable neighborhoods are suspended, the one tried least recently is used.
+
+\textbf{Service frequency compensation.} For the current count $C_q=\sum_{n\in\Nset_q}c_{nq}$ of a station rule, the admissible count change is
+\begin{equation}
+\lb{K}_q-C_q\ \le\ \Delta C_q\ \le\ \ub{K}_q-C_q.\label{eq:comp}
+\end{equation}
+Stop changes and time shifts across counting-window boundaries can alter $C_q$. For a given set of released decisions, \cref{alg:nbh} computes the smallest and largest counts that the released decisions could produce. If the smallest count could fall below $\lb{K}_q$, operations that can add a counted stop are included: an optional stop of another train inside the window, or an existing stop whose time can move into the window. Symmetrically, if the largest count could exceed $\ub{K}_q$, operations that can remove a counted stop are included. Candidates are chosen by their remaining room under their own stop-count rules and by their time distance to the window, and the expansion is bounded by the scale limits. For example, losing a counted stop at a rule's lower bound requires another stop within that window; the compensating train must also respect its own stop-count limits, the bounds of other affected service counts, and the station track and route constraints. The restricted MILP determines these changes jointly; counts need not retain their previous values if they remain within their bounds. Train stop-count rules are treated in the same way.
+
+\begin{algorithm}[tbp]
+\caption{Neighborhood construction with service frequency compensation}\label{alg:nbh}
+\small
+\begin{algorithmic}[1]
+\Require current solution $x$; seeds; operator $o$; scale limits (trains, stop changes, time radius)
+\Ensure released decisions $\mathcal{F}$ (stops, event times, orders, station routings)
+\State $\mathcal{F}\gets$ decisions of the seed operations permitted by $o$; expand along the seed trains and to trains at the same stations at close times
+\If{$o\in\{\mathrm{J4}\}$} add the trains outside $\mathcal{F}$ with the highest boundary conflict pressure \EndIf
+\If{$o\in\{\mathrm{J5}\}$} add the decisions on chains of tight activities starting from the seeds \EndIf
+\Repeat
+  \For{each train stop-count or station rule $q$ that contains a released operation}
+    \State compute the minimum and maximum counts $\lb{C}_q(\mathcal{F})$, $\ub{C}_q(\mathcal{F})$ attainable by changing only the decisions in $\mathcal{F}$
+    \If{$\lb{C}_q(\mathcal{F})<\lb{K}_q$} add operations that can add a counted stop (optional stop or time shift into the window) \EndIf
+    \If{$\ub{C}_q(\mathcal{F})>\ub{K}_q$} add operations that can remove a counted stop \EndIf
+  \EndFor
+\Until{no rule is added \textbf{or} a scale limit is reached}
+\State add the station routings of all trains at the stations affected by $\mathcal{F}$ (background trains keep their times)
+\State \Return $\mathcal{F}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Restricted MILP repair}\label{sec:repair}
+The restricted MILP is constructed from the complete macroscopic model. Decisions outside the neighborhood are fixed to their values in the anchor solution, released event times may move within the intersection of their hard bounds and the time radius, and running time supplements may change only on arcs with at least one released end. All constraints that involve a released decision are retained, including those that link it to fixed decisions; the model is compiled by eliminating fixed variables rather than by deleting constraints. At every station affected by the neighborhood, station routing variables and order variables are built for all operations at that station, including background trains whose times are fixed, so that a released train can be accommodated by re-routing other trains.
+
+Before the first jointly feasible timetable is found, nonnegative slacks relax the track occupation and route headway constraints \eqref{eq:track}--\eqref{eq:route}. Candidates are ranked by $\Phi^F=(V^{\mathrm{micro}},P,S,R)$, where $V^{\mathrm{micro}}$ sums the temporal separation deficits in seconds under the evaluated resource assignment. For each unordered pair of station operations and each applicable track or route-event relation, the smaller nonnegative deficit over the two precedence orders is used; scores are summed over relations and pairs, and a microscopic conflict is a pair with a positive score. This diagnostic measures neither the total overlap duration nor the timetable extension needed for feasibility. After station conflict reduction, $P$ precedes $S$ to favour timetables close to the preferred windows during feasibility restoration. The quality search requires zero slack and uses the objective order of the problem, $\Phi^Q=(S,P,R)$. Auxiliary terms, such as the number of stop changes and the total movement of event times, may be added with low priority to stabilize the repair. Window-endpoint misclassifications under \eqref{eq:freqlin} are corrected locally by linking the affected in-window indicator to the stop decision or, if necessary, by re-solving the complete macroscopic model; the reward of such a recovery is not credited to the original operator. The restricted model is not built if it would exceed 2\,000\,000 station constraints or 200\,000 integer variables; the attempt is then recorded as unsuccessful.
+
+\subsection{Adaptive operator selection}\label{sec:adaptive}
+Following \citet{Ropke2006}, each pair $a$ of operator and scale in the applicable set $\Aset^{\mathrm{act}}$ is selected with probability
+\begin{equation}
+p_a=(1-\epsilon)\frac{w_a}{\sum_{b\in\Aset^{\mathrm{act}}}w_b}+\frac{\epsilon}{|\Aset^{\mathrm{act}}|},\label{eq:select-prob}
+\end{equation}
+where $w_a$ is the current weight and $\epsilon$ controls uniform exploration. Separate weights are kept for the macroscopic, joint feasibility, and joint quality phases, so that success in removing violations is not taken as evidence that the same operator will compress a feasible timetable. For $N_a>0$ observations of $a$ in an observation period, with rewards $r_k\ge0$ and computation times $\tau_k>0$, the weights are updated as
+\begin{equation}
+\begin{gathered}
+w^+_a=\max\{w_{\min},(1-\lambda)w_a+\lambda g_a\},\qquad
+g^M_a=\frac{\sum_{k:a_k=a}r_k}{N_a},\\ g^F_a=\frac{\sum_{k:a_k=a}r_k}{\sum_{k:a_k=a}\tau_k/\tau_0},\qquad
+g^Q_a=\frac{\bar r_a}{\min\{2,\max\{0.5,\sqrt{\bar\tau_a/\tau_0}\}\}},
+\end{gathered}\label{eq:weights}
+\end{equation}
+where $g^M_a$, $g^F_a$, and $g^Q_a$ are the scores in the three phases, $\bar r_a$ and $\bar\tau_a$ are the average reward and computation time, and the square root moderates the time penalty in the quality phase. Pairs not used in a period keep their weights. The rewards are listed in \cref{tab:params}: the first macroscopically or jointly feasible timetable receives 8, a new best diagnostic score or solution 4, and another improvement 1; the joint rewards add the normalized improvement of the first differing component of $\Phi$; a secondary improvement at equal makespan receives 0.1, and an unvisited accepted structure 0.05 in the quality phase. Invalid candidates receive zero. In the quality phase, the time limit of each repair is also selected adaptively among 60, 180, and 600~s.
+
+\begin{table}[tb]
+\centering\small
+\caption{Destroy operators of the CD-ALNS.}\label{tab:operators}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{27mm}>{\raggedright\arraybackslash}p{38mm}>{\raggedright\arraybackslash}p{34mm}>{\raggedright\arraybackslash}p{50mm}@{}}\toprule
+Operator & Released decisions & Fixed decisions & Typical conflict addressed\\\midrule
+\multicolumn{4}{@{}l}{\textit{Macroscopic operators (Phase 1)}}\\
+M1 Time & Event times, supplements & Stops, all train orders & Headway deficits that small time shifts can remove\\
+M2 Order--time & Times, orders of selected train pairs & Stops & Conflicts that require re-sequencing two trains\\
+M3 Waiting support & Orders on adjacent sections, times & Stops & Long dwells without an overtaking train\\
+M4 Stop--frequency & Optional stops, related orders, times & Other stops & Frequency violations; conflicts caused by stops\\\midrule
+\multicolumn{4}{@{}l}{\textit{Joint operators (Phases 2 and 3)}}\\
+J1 Joint & Stops, orders, times, routings & Decisions outside the neighborhood & General station conflicts\\
+J2 Time & Times, routings & Stops, all train orders & Conflicts solvable by time shifts and re-routing\\
+J3 Service frequency & J1 with service frequency compensation & Decisions outside the neighborhood & Conflict repairs affecting service counts\\
+J4 Boundary & J1 plus extra trains & Remaining trains & Conflicts propagating across the boundary\\
+J5 Tight temporal links & Decisions along tight activities & Other decisions & Running, dwell, order, track, and route restrictions; critical activities\\\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[tb]
+\centering\small
+\caption{Parameters of the CD-ALNS used in all experiments.}\label{tab:params}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{70mm}>{\raggedright\arraybackslash}p{78mm}@{}}\toprule
+Parameter & Value\\\midrule
+Exploration rate $\epsilon$; smoothing $\lambda$; minimum weight $w_{\min}$ & 0.15; 0.25; 0.05\\
+Initial weights; observation period; reference time $\tau_0$ & 1; 10 observations; 60 s\\
+Rewards (first feasible / new best / improvement) & 8 / 4 / 1 (+ normalized gain in Phases 2--3)\\
+Quality rewards (secondary improvement / diversity) & 0.1 / 0.05\\
+Macroscopic scales: train pairs; time radius; stop changes (M4) & 160/320/640; 600/1200/2400 s; 6/12/18\\
+Joint scales: trains; stop changes; time radius; neighbor stations & 12/20/32; 4/8/12; 600 s/1800 s/none; 2/4/all\\
+J3 limits (operations); J4 extra trains & 32/48/64; 2/4/6\\
+Suspension of failed neighborhoods & 4, 8, 16, 32 iterations\\
+Quality repair time limits & 60, 180, 600 s (selected adaptively)\\
+Acceptance threshold (quality phase) & $\min\{30\ \mathrm{s},0.0025S^\star\}\times$ remaining time fraction\\
+Restricted MILP size limits & $2\times10^6$ station constraints; $2\times10^5$ integer variables\\\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Solution acceptance and fixed-structure timetable re-optimization}\label{sec:accept}
+\textbf{Acceptance.} A candidate is accepted as jointly feasible only if it satisfies all macroscopic activities, including the exact service counts under \eqref{eq:freq}, and if an independent check confirms that its station routings satisfy \eqref{eq:select}--\eqref{eq:route} at every station. The accepted timetable is saved and re-read with the saved tracks and routes fixed, and checked again. Jointly feasible timetables are compared lexicographically by $(S,P,R)$, computed from the continuous event times, with absolute differences of at most $10^{-6}$ treated as ties. During stagnation, i.e., after six quality iterations without improvement, the current solution of the quality search may move to an unvisited jointly feasible structure whose makespan exceeds that of the best timetable $S^\star$ by at most $\min\{30\ \mathrm{s},0.0025S^\star\}$, scaled by the remaining fraction of the time limit, provided that its penalty $P$ does not exceed that of the best timetable. This allowance explores alternative stopping patterns, train orders, and station routings, while the best timetable is retained.
+
+\textbf{Fixed-structure re-optimization.} By \cref{prop:longest}, the timetable of a fixed structure can be re-optimized by a linear program. Fixed-structure re-optimization fixes the stops, train orders, maintenance and window classifications, station routings, and track and route precedences of the best timetable and adjusts all event times simultaneously. The resulting linear program minimizes $S$, then $P$, then $R$; each attained value is imposed as an upper bound in the next stage, and a lower-priority stage is only solved after the preceding one is optimal. Before optimization, the source timetable is checked to be feasible for the fixed structure, so that an incorrectly built model cannot exclude it. The re-optimization allows improvements beyond the time radii of the neighborhoods; its optimality concerns only the fixed structure, and J5 can subsequently release orders or routes on critical activities that block further compression. Its computation time is limited to a small share of the remaining time, and the same structure is not re-optimized repeatedly.

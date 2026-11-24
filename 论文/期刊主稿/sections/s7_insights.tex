@@ -1,0 +1,14 @@
+\section{Managerial insights}\label{sec:insights}
+The experiments suggest several implications for railway planners.
+
+\textbf{Macroscopic feasibility does not guarantee station feasibility.} In the medium-scale case, the macroscopically feasible timetable satisfied all section headways, which are lower bounds on the route headways, but still contained nine station conflicts (\cref{sec:convergence}). Using the most restrictive route headway at the macroscopic level would remove such conflicts, but it would also exclude timetables that are feasible with less restrictive routes. Planning tools that only check line capacity can therefore produce timetables that cannot be executed in busy stations, and a sequential approach may have to revise the timetable after platforming.
+
+\textbf{Service frequency requirements shape the feasible stop changes.} In the best timetables, a large share of the station service frequency rules are binding (\cref{tab:solution}). In that situation, a planner who skips a stop to relieve a station must at the same time decide which other train stops in the same counting window, and whether that train can be accommodated on a track. The joint neighborhoods of the CD-ALNS make this trade-off explicit, which is also how timetable planners reason when adjusting a draft timetable manually.
+
+\textbf{Compressing the operating period.} Minimizing the makespan accommodates all prescribed services in a shorter operating period, which leaves more of the day for maintenance or additional services. In the medium- and large-scale cases, the makespan of the first jointly feasible timetable was reduced by 5445~s and 3126~s, respectively, through coordinated changes in stops, orders, and station routings and through the joint re-optimization of all event times.
+
+\textbf{Station resources.} The best timetables use only part of the available station tracks (\cref{tab:solution}); in the medium-scale case, 31 of the 63 tracks are used. Together with the critical activities of \cref{prop:longest}, this information indicates where additional capacity would or would not shorten the operating period.
+
+\begin{pending}[: insights from E3--E5]
+Add quantitative insights from the sensitivity analysis (\cref{sec:sensitivity}) and the comparison with sequential planning (\cref{sec:sequential}), e.g., the marginal effect of tighter service frequency rules or longer maintenance windows on the makespan, the value of allowing overtaking, and the makespan increase or feasibility loss of sequential planning.
+\end{pending}
